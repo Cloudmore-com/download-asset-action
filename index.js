@@ -1,6 +1,7 @@
 const core = require("@actions/core");
 const { Octokit } = require("@octokit/rest");
 const { save } = require("save-file");
+const { createActionAuth } = require("@octokit/auth-action");
 const path = require("path");
 
 function requestLogger(httpModule) {
@@ -21,18 +22,16 @@ async function run() {
   try {
     // Authentication
     const octokit = new Octokit({
-      auth: process.env.GITHUB_TOKEN,
+      authStrategy: createActionAuth,
     });
-    console.log("1");
     // Inputs
-    const [owner, repo] = ["Cloudmore-com", "cmp"]; //core.getInput('repository').split("/");
-    const excludes = []; //core.getInput('excludes').trim().split(",");
-    const tag = "release-3.51.0"; //core.getInput('tag');
-    const assetName = "liquibase_patches"; //core.getInput('asset');
-    const target = "."; //core.getInput('target');
+    const [owner, repo] = core.getInput('repository').split("/");
+    const excludes = core.getInput('excludes').trim().split(",");
+    const tag = core.getInput('tag');
+    const assetName = core.getInput('asset');
+    const target = core.getInput('target');
 
     // Get release
-    console.log("2");
     let releases = await octokit.repos.listReleases({
       owner: owner,
       repo: repo,
@@ -47,14 +46,12 @@ async function run() {
     if (tag) releases = releases.filter((rel) => rel.tag_name.includes(tag));
     if (releases.length === 0) throw new Error("No matching releases");
 
-    console.log("3");
     // Get asset
     let assets = releases[0].assets;
     assets = assets.filter((ass) => ass.name.includes(assetName));
 
     if (assets.length === 0) throw new Error("No matching assets");
 
-    console.log("4");
     asset = await octokit.repos.getReleaseAsset({
       headers: {
         Accept: "application/octet-stream",
